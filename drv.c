@@ -699,6 +699,10 @@ int drv_bo_get_plane_fd(struct bo *bo, size_t plane)
 	if (bo->is_test_buffer)
 		return -EINVAL;
 
+	if (bo->drv->backend->bo_get_plane_fd) {
+		return bo->drv->backend->bo_get_plane_fd(bo, plane);
+	}
+
 	return bo->drv->backend->bo_export(bo, plane);
 }
 
