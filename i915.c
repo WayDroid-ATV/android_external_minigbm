@@ -868,6 +868,16 @@ static int i915_bo_create_from_metadata(struct bo *bo)
 		gem_set_tiling.tiling_mode = bo->meta.tiling;
 		gem_set_tiling.stride = bo->meta.strides[0];
 
+    /* Mesa/crocus driver has trouble dealing with Y-tiled buffer with tiling set in
+     * the kernel as well as in metadata. A (hopefully) temporary hack is not to set
+     * tiling in the kernel.
+     *
+     * Ref: https://gitlab.freedesktop.org/mesa/mesa/-/issues/7469
+     */
+		if (gem_set_tiling.tiling_mode == I915_TILING_Y) {
+	    	gem_set_tiling.tiling_mode = I915_TILING_NONE;
+		}
+
 		ret = drmIoctl(bo->drv->fd, DRM_IOCTL_I915_GEM_SET_TILING, &gem_set_tiling);
 		if (ret) {
 			struct drm_gem_close gem_close = { 0 };
