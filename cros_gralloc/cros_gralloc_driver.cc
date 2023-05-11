@@ -29,6 +29,7 @@
 // DRM Card nodes start at 0
 #define DRM_CARD_NODE_START 0
 
+#ifndef DRV_EXTERNAL
 class cros_gralloc_driver_preloader
 {
       public:
@@ -44,6 +45,7 @@ class cros_gralloc_driver_preloader
 };
 
 static class cros_gralloc_driver_preloader cros_gralloc_driver_preloader;
+#endif
 
 int memfd_create_wrapper(const char *name, unsigned int flags)
 {
