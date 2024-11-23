@@ -51,6 +51,7 @@ filegroup {
         "virtgpu_cross_domain.c",
         "virtgpu_virgl.c",
         "xe.c",
+        "vmwgfx.c",
     ],
 }
 
@@ -215,7 +216,11 @@ rust_bindgen {
 cc_library_shared {
     name: "libminigbm_gralloc",
     defaults: ["minigbm_cros_gralloc_library_defaults"],
-    cflags: ["-DHAS_DMABUF_SYSTEM_HEAP"],
+    include_dirs: [
+        "external/mesa/include",
+        "external/mesa/src/gallium/drivers/svga/include",
+    ],
+    cflags: ["-DHAS_DMABUF_SYSTEM_HEAP", "-DDRV_VMWGFX"],
 }
 
 cc_library_shared {
