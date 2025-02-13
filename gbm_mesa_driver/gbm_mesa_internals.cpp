@@ -169,41 +169,6 @@ int open_drm_dev(bool card_node, std::function<bool(int, bool, std::string)> fou
 	return 0;
 }
 
-/*
- * List of GPU which rely on separate display controller drivers,
- * For this GPUs we have to find and open /dev/cardX KMS node
- * Other GPUs can be accessed via renderD GPU node.
- */
-static std::array<std::string, 6> separate_dc_gpu_list = { "v3d",      "vc4",  "etnaviv",
-							   "panfrost", "lima", "freedreno" };
-
-static bool is_separate_dc_gpu(UniqueFd *out_gpu_fd)
-{
-	UniqueFd gpu_fd;
-	bool separate_dc = false;
-	std::string gpu_name;
-
-	open_drm_dev(false, [&](int fd, bool is_kms, std::string drm_name) -> bool {
-		if (separate_dc)
-			return false;
-
-		for (const auto &name : separate_dc_gpu_list) {
-			if (drm_name == std::string(name))
-				separate_dc = true;
-		}
-		gpu_fd = UniqueFd(fd);
-		gpu_name = drm_name;
-
-		return true;
-	});
-
-	*out_gpu_fd = std::move(gpu_fd);
-
-	drv_logi("Found GPU %s\n", gpu_name.c_str());
-
-	return separate_dc;
-}
-
 static std::shared_ptr<GbmMesaDriver> gbm_mesa_get_or_init_driver(struct driver *drv,
 								  bool mapper_sphal)
 {
@@ -212,28 +177,14 @@ static std::shared_ptr<GbmMesaDriver> gbm_mesa_get_or_init_driver(struct driver 
 	if (!drv->priv) {
 		gbm_mesa_drv = std::make_unique<GbmMesaDriver>();
 
-		bool look_for_kms = is_separate_dc_gpu(&gbm_mesa_drv->gpu_node_fd);
-
-		if (look_for_kms && !mapper_sphal) {
-			drv_logi("GPU require KMSRO entry, searching for separate KMS driver...\n");
-			open_drm_dev(true, [&](int fd, bool is_kms, std::string drm_name) -> bool {
-				if (!is_kms || gbm_mesa_drv->gbm_node_fd)
-					return false;
-
-				gbm_mesa_drv->gbm_node_fd = UniqueFd(fd);
-				drv_logi("Found KMS dev %s\n", drm_name.c_str());
-				return true;
-			});
-			/* cardX KMS node need this otherwise composer won't be able to configure
-			 * KMS state */
+		open_drm_dev(false, [&](int fd, bool is_kms, std::string drm_name) -> bool {
 			if (gbm_mesa_drv->gbm_node_fd)
-				drmDropMaster(gbm_mesa_drv->gbm_node_fd.Get());
-			else
-				drv_loge(
-				    "Unable to find/open /dev/card node with KMS capabilities.\n");
-		} else {
-			gbm_mesa_drv->gbm_node_fd = UniqueFd(dup(gbm_mesa_drv->gpu_node_fd.Get()));
-		}
+				return false;
+
+			drv_logi("Found GPU %s\n", drm_name.c_str());
+			gbm_mesa_drv->gbm_node_fd = UniqueFd(fd);
+			return true;
+		});
 
 		if (!gbm_mesa_drv->gbm_node_fd) {
 			drv_loge("Unable to find or open DRM node");
