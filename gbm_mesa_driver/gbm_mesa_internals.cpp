@@ -179,6 +179,12 @@ static std::shared_ptr<GbmMesaDriver> gbm_mesa_get_or_init_driver(struct driver 
 	if (!drv->priv) {
 		gbm_mesa_drv = std::make_unique<GbmMesaDriver>();
 
+		char path[PROPERTY_VALUE_MAX];
+		if (property_get("gralloc.gbm.device", path, NULL) > 0) {
+			drv_logi("Using device %s as requested by gralloc.gbm.device\n", path);
+			gbm_mesa_drv->gbm_node_fd = UniqueFd(open(path, O_RDWR | O_CLOEXEC));
+		}
+
 		open_drm_dev(false, [&](int fd, bool is_kms, std::string drm_name) -> bool {
 			if (gbm_mesa_drv->gbm_node_fd)
 				return false;
