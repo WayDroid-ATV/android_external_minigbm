@@ -25,6 +25,12 @@
 #include <log/log.h>
 #include <sys/mman.h>
 
+#include <cutils/properties.h>
+
+#include <sstream>
+#include <vector>
+#include <unordered_map>
+
 #define ARRAY_SIZE(A) (sizeof(A) / sizeof(*(A)))
 #define DRM_TO_GBM_FORMAT(A)                                                                       \
 	{                                                                                          \
@@ -51,6 +57,38 @@ static const struct {
 	DRM_TO_GBM_FORMAT(FORMAT_XBGR16161616F),
 	DRM_TO_GBM_FORMAT(FORMAT_ABGR16161616F),
 };
+
+static std::unordered_map<uint32_t, std::vector<uint64_t>> gbm_format_modifiers_map;
+
+static std::vector<uint64_t> get_supported_modifiers(struct gbm_device *gbm, uint32_t format) {
+	if (gbm_format_modifiers_map.find(format) != gbm_format_modifiers_map.end()) {
+		return gbm_format_modifiers_map[format];
+	}
+
+	// Create empty default so we can match it next time
+	std::vector<uint64_t> &modifiers = gbm_format_modifiers_map[format];
+
+	std::stringstream prop_name_stream;
+	prop_name_stream << "waydroid.modifiers." << std::hex << format << ".";
+	std::string prop_name_base = prop_name_stream.str();
+	char modifier_prop[PROPERTY_VALUE_MAX];
+	int i = 0;
+	while (true) {
+		std::string prop_name = (std::stringstream() << prop_name_base << i).str();
+		if (property_get(prop_name.c_str(), modifier_prop, NULL) < 1)
+			break;
+		std::stringstream ss(modifier_prop);
+		uint64_t mod;
+		ss >> std::hex >> mod;
+
+		// Filter out multiplanar format-modifier combos
+		if (gbm_device_get_format_modifier_plane_count(gbm, format, mod) < 2)
+			modifiers.push_back(mod);
+		i++;
+	}
+
+	return modifiers;
+}
 
 static uint32_t get_gbm_mesa_format(uint32_t drm_format)
 {
@@ -90,7 +128,14 @@ static int gbm_mesa_alloc(struct alloc_args *args)
 	if (args->use_scanout)
 		usage |= GBM_BO_USE_SCANOUT;
 
-	bo = gbm_bo_create(args->gbm, args->width, args->height, gbm_format, usage);
+	const std::vector<uint64_t> modifiers = get_supported_modifiers(args->gbm, args->drm_format);
+	if (modifiers.size() > 0) {
+		bo = gbm_bo_create_with_modifiers2(args->gbm, args->width, args->height, gbm_format, modifiers.data(), modifiers.size(), usage);
+	}
+	if (!bo) {
+		ALOGV("fallback to gbm_bo_create without modifiers");
+		bo = gbm_bo_create(args->gbm, args->width, args->height, gbm_format, usage);
+	}
 
 	if (!bo) {
 		ALOGE("Unable to create BO, size=%dx%d, fmt=%d", args->width, args->height,
@@ -191,6 +236,8 @@ static void gbm_unmap(struct gbm_bo *bo, void *map_data)
 	gbm_bo_unmap(bo, map_data);
 }
 
+extern "C" {
+
 struct gbm_ops gbm_ops = {
 	.get_gbm_format = get_gbm_mesa_format,
 	.dev_create = gbm_mesa_dev_create,
@@ -205,4 +252,6 @@ struct gbm_ops gbm_ops = {
 __attribute__((visibility("default"))) struct gbm_ops *get_gbm_ops()
 {
 	return &gbm_ops;
+}
+
 }
