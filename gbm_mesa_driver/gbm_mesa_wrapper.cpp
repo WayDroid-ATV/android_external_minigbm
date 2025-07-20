@@ -186,7 +186,7 @@ static int gbm_mesa_alloc(struct alloc_args *args)
 
 		addr = gbm_bo_map(bo, 0, 0, args->width, args->height, flags, &args->out_map_stride,
 				  &map_data);
-		if (addr == MAP_FAILED) {
+		if (addr == NULL) {
 			ALOGE("Failed to map the buffer at %s:%d", __FILE__, __LINE__);
 		} else {
 			gbm_bo_unmap(bo, map_data);
@@ -231,7 +231,8 @@ static void gbm_map(struct gbm_bo *bo, int w, int h, void **addr, void **map_dat
 
 	uint32_t stride = 0;
 	*addr = gbm_bo_map(bo, 0, 0, w, h, flags, &stride, map_data);
-	if (addr == MAP_FAILED) {
+	if (addr == NULL) {
+		*addr = MAP_FAILED;
 		ALOGE("Failed to map the buffer at %s:%d", __FILE__, __LINE__);
 	}
 }
