@@ -13,6 +13,7 @@ cc_library_shared {
     defaults: ["minigbm_cros_gralloc_library_defaults"],
     cflags: [
         "-DDRV_EXTERNAL",
+        "-DHAS_DMABUF_SYSTEM_HEAP",
     ],
     srcs: [
         ":minigbm_gbm_mesa_internal_files",
