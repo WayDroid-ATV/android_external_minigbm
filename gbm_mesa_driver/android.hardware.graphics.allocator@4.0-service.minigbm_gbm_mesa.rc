@@ -22,11 +22,3 @@ service vendor.graphics.allocator-4-0 /vendor/bin/hw/android.hardware.graphics.a
     capabilities SYS_NICE
     onrestart restart surfaceflinger
     task_profiles ServiceCapacityLow
-    disabled
-
-on early-init && property:ro.hardware.gralloc=minigbm_gbm_mesa
-    mount none /vendor/etc/vintf/manifest.disabled/gbm_mesa.allocator@4.0.xml /vendor/etc/vintf/manifest/gbm_mesa.allocator@4.0.xml ro bind
-    mount none /vendor/etc/vintf/manifest.disabled/gbm_mesa.mapper@4.0.xml /vendor/etc/vintf/manifest/gbm_mesa.mapper@4.0.xml ro bind
-    mount none /vendor/etc/vintf/manifest.disabled/empty_vintf.xml /vendor/etc/vintf/manifest/gralloc1.xml ro bind
-    stop vendor.gralloc-2-0
-    enable vendor.graphics.allocator-4-0
