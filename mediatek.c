@@ -10,9 +10,6 @@
 #include <errno.h>
 #include <fcntl.h>
 #include <inttypes.h>
-#if !defined(ANDROID) || (ANDROID_API_LEVEL >= 31 && defined(HAS_DMABUF_SYSTEM_HEAP))
-#include <linux/dma-heap.h>
-#endif
 #include <poll.h>
 #include <stdio.h>
 #include <string.h>
@@ -20,7 +17,10 @@
 #include <sys/mman.h>
 #include <unistd.h>
 #include <xf86drm.h>
-#include <mediatek_drm.h>
+#if !defined(ANDROID) || (ANDROID_API_LEVEL >= 31 && defined(HAS_DMABUF_SYSTEM_HEAP))
+#include "external/dma-heap.h"
+#endif
+#include "external/mediatek_drm.h"
 // clang-format on
 
 #include "drv_helpers.h"
@@ -36,17 +36,16 @@
 #define SUPPORT_YUV422
 #endif
 
-// All platforms except MT8173 should USE_NV12_FOR_HW_VIDEO_DECODING
-// and SUPPORT_FP16_AND_10BIT_ABGR
+// All platforms except MT8173 should SUPPORT_FP16_AND_10BIT_ABGR
 // clang-format off
 #if defined(MTK_MT8183) || \
     defined(MTK_MT8186) || \
     defined(MTK_MT8188G) || \
+    defined(MTK_MT8189) || \
     defined(MTK_MT8192) || \
     defined(MTK_MT8195) || \
     defined(MTK_MT8196)
 // clang-format on
-#define USE_NV12_FOR_HW_VIDEO_DECODING
 #define SUPPORT_FP16_AND_10BIT_ABGR
 #else
 #define DONT_USE_64_ALIGNMENT_FOR_VIDEO_BUFFERS
@@ -113,6 +112,13 @@ static const uint32_t video_yuv_formats[] = {
 	DRM_FORMAT_YVU420,
 	DRM_FORMAT_YVU420_ANDROID
 };
+
+// In addition to all scanout we should also support R8 and non YUV texture formats.
+static const uint32_t gpu_data_buffer_formats[] = {
+	DRM_FORMAT_R8,
+	DRM_FORMAT_ABGR2101010,
+	DRM_FORMAT_ABGR16161616F
+};
 // clang-format on
 
 static bool is_video_yuv_format(uint32_t format)
@@ -129,6 +135,7 @@ static int mediatek_init(struct driver *drv)
 {
 	struct format_metadata metadata;
 	struct mediatek_private_drv_data *priv;
+	uint64_t protected = BO_USE_PROTECTED;
 
 	priv = calloc(1, sizeof(*priv));
 	if (!priv) {
@@ -136,28 +143,40 @@ static int mediatek_init(struct driver *drv)
 		return -errno;
 	}
 
+#if !defined(ANDROID) || (ANDROID_API_LEVEL >= 31 && defined(HAS_DMABUF_SYSTEM_HEAP))
+	priv->dma_heap_fd = open("/dev/dma_heap/restricted_mtk_cma", O_RDONLY | O_CLOEXEC);
+	if (priv->dma_heap_fd < 0) {
+		if (errno == EACCES)
+			drv_loge("Failed opening secure CMA heap because of permission (possibly sandbox or sepolicy) problem.\n");
+		else
+			drv_logi("Failed opening secure CMA heap with error %s.\n", strerror(errno));
+		protected = 0;
+	}
+#else
 	priv->dma_heap_fd = -1;
+	protected = 0;
+#endif
+
 	drv->priv = priv;
 
 	drv_add_combinations(drv, render_target_formats, ARRAY_SIZE(render_target_formats),
-			     &LINEAR_METADATA,
-			     BO_USE_RENDER_MASK | BO_USE_SCANOUT | BO_USE_PROTECTED);
+			     &LINEAR_METADATA, BO_USE_RENDER_MASK | BO_USE_SCANOUT | protected);
 
 	drv_add_combinations(drv, texture_source_formats, ARRAY_SIZE(texture_source_formats),
-			     &LINEAR_METADATA, BO_USE_TEXTURE_MASK | BO_USE_PROTECTED);
+			     &LINEAR_METADATA, BO_USE_TEXTURE_MASK | protected);
 
 	drv_add_combination(drv, DRM_FORMAT_R8, &LINEAR_METADATA,
-			    BO_USE_SW_MASK | BO_USE_LINEAR | BO_USE_PROTECTED);
+			    BO_USE_SW_MASK | BO_USE_LINEAR | protected);
 
 #ifdef SUPPORT_AR30_OVERLAYS
 	drv_add_combination(drv, DRM_FORMAT_ARGB2101010, &LINEAR_METADATA,
-			    BO_USE_TEXTURE | BO_USE_SCANOUT | BO_USE_PROTECTED | BO_USE_LINEAR);
+			    BO_USE_TEXTURE | BO_USE_SCANOUT | protected | BO_USE_LINEAR);
 #endif
 
 	/* YUYV format for video overlay and camera subsystem. */
 	drv_add_combination(drv, DRM_FORMAT_YUYV, &LINEAR_METADATA,
 			    BO_USE_HW_VIDEO_DECODER | BO_USE_SCANOUT | BO_USE_LINEAR |
-				BO_USE_TEXTURE | BO_USE_PROTECTED);
+				BO_USE_TEXTURE | protected);
 
 	/* Android CTS tests require this. */
 	drv_add_combination(drv, DRM_FORMAT_BGR888, &LINEAR_METADATA, BO_USE_SW_MASK);
@@ -167,7 +186,7 @@ static int mediatek_init(struct driver *drv)
 	metadata.priority = 1;
 	metadata.modifier = DRM_FORMAT_MOD_LINEAR;
 	drv_modify_combination(drv, DRM_FORMAT_YVU420, &metadata,
-			       BO_USE_HW_VIDEO_DECODER | BO_USE_PROTECTED);
+			       BO_USE_HW_VIDEO_DECODER | protected);
 #ifdef MTK_MT8173
 	/*
 	 * b/292507490: The MT8173 decoder can output YUV420 only. Some CTS tests feed the
@@ -178,14 +197,13 @@ static int mediatek_init(struct driver *drv)
 	drv_modify_combination(drv, DRM_FORMAT_YVU420, &metadata, BO_USE_HW_VIDEO_ENCODER);
 #endif
 	drv_modify_combination(drv, DRM_FORMAT_YVU420_ANDROID, &metadata,
-			       BO_USE_HW_VIDEO_DECODER | BO_USE_PROTECTED);
-#ifdef USE_NV12_FOR_HW_VIDEO_DECODING
-	// TODO(hiroh): Switch to use NV12 for video decoder on MT8173 as well.
+			       BO_USE_HW_VIDEO_DECODER | protected);
+#ifndef MTK_MT8173
 	drv_modify_combination(drv, DRM_FORMAT_NV12, &metadata,
-			       BO_USE_HW_VIDEO_DECODER | BO_USE_PROTECTED);
+			       BO_USE_HW_VIDEO_DECODER | protected);
 #endif
 	drv_modify_combination(drv, DRM_FORMAT_P010, &metadata,
-			       BO_USE_HW_VIDEO_DECODER | BO_USE_PROTECTED);
+			       BO_USE_HW_VIDEO_DECODER | protected);
 
 	/*
 	 * R8 format is used for Android's HAL_PIXEL_FORMAT_BLOB for input/output from
@@ -197,16 +215,21 @@ static int mediatek_init(struct driver *drv)
 				   BO_USE_GPU_DATA_BUFFER | BO_USE_SENSOR_DIRECT_DATA);
 
 	/* NV12 format for encoding and display. */
+#ifndef MTK_MT8173
+	drv_modify_combination(drv, DRM_FORMAT_NV12, &metadata,
+			       BO_USE_SCANOUT | BO_USE_HW_VIDEO_ENCODER | BO_USE_CAMERA_READ |
+				   BO_USE_CAMERA_WRITE | BO_USE_SW_MASK);
+#else
 	drv_modify_combination(drv, DRM_FORMAT_NV12, &metadata,
 			       BO_USE_SCANOUT | BO_USE_HW_VIDEO_ENCODER | BO_USE_CAMERA_READ |
 				   BO_USE_CAMERA_WRITE);
+#endif
 
 	/*
 	 * Android also frequently requests YV12 formats for some camera implementations
-	 * (including the external provider implmenetation).
+	 * (including the external provider implementation).
 	 */
-	drv_modify_combination(drv, DRM_FORMAT_YVU420_ANDROID, &metadata,
-			       BO_USE_CAMERA_WRITE);
+	drv_modify_combination(drv, DRM_FORMAT_YVU420_ANDROID, &metadata, BO_USE_CAMERA_WRITE);
 
 #ifdef MTK_MT8183
 	/* Only for MT8183 Camera subsystem */
@@ -220,6 +243,15 @@ static int mediatek_init(struct driver *drv)
 	drv_add_combination(drv, DRM_FORMAT_MTISP_SXYZW10, &metadata,
 			    BO_USE_CAMERA_READ | BO_USE_CAMERA_WRITE | BO_USE_SW_MASK);
 #endif
+
+	for (unsigned i = 0; i < ARRAY_SIZE(render_target_formats); i++) {
+		drv_modify_combination(drv, render_target_formats[i], &metadata,
+				       BO_USE_GPU_DATA_BUFFER);
+	}
+	for (unsigned i = 0; i < ARRAY_SIZE(gpu_data_buffer_formats); i++) {
+		drv_modify_combination(drv, gpu_data_buffer_formats[i], &metadata,
+				       BO_USE_GPU_DATA_BUFFER);
+	}
 
 	return drv_modify_linear_combinations(drv);
 }
@@ -249,6 +281,7 @@ static int mediatek_bo_create_with_modifiers(struct bo *bo, uint32_t width, uint
 	const bool is_linear = bo->meta.use_flags & BO_USE_LINEAR;
 	const bool is_protected = bo->meta.use_flags & BO_USE_PROTECTED;
 	const bool is_scanout = bo->meta.use_flags & BO_USE_SCANOUT;
+	const bool is_cursor = bo->meta.use_flags & BO_USE_CURSOR;
 	/*
 	 * We identify the ChromeOS Camera App buffers via these two USE flags. Those buffers need
 	 * the same alignment as the video hardware encoding.
@@ -273,6 +306,27 @@ static int mediatek_bo_create_with_modifiers(struct bo *bo, uint32_t width, uint
 	}
 
 	/*
+	 * For cursor buffer, add padding as needed to reach a known cursor-plane-supported
+	 * buffer size, as reported by the cursor capability properties.
+	 *
+	 * If the requested dimensions exceed either of the reported capabilities, or if the
+	 * capabilities couldn't be read, silently fallback by continuing without additional
+	 * padding. The buffer can still be used normally, and be committed to non-cursor
+	 * planes.
+	 */
+	if (is_cursor) {
+		uint64_t cursor_width = 0;
+		uint64_t cursor_height = 0;
+		bool err = drmGetCap(bo->drv->fd, DRM_CAP_CURSOR_WIDTH, &cursor_width) ||
+			   drmGetCap(bo->drv->fd, DRM_CAP_CURSOR_HEIGHT, &cursor_height);
+
+		if (!err && width <= cursor_width && height <= cursor_height) {
+			width = cursor_width;
+			height = cursor_height;
+		}
+	}
+
+	/*
 	 * Since the ARM L1 cache line size is 64 bytes, align to that as a
 	 * performance optimization, except for video buffers on certain platforms,
 	 * these should only be accessed from the GPU and VCODEC subsystems (maybe
@@ -292,7 +346,7 @@ static int mediatek_bo_create_with_modifiers(struct bo *bo, uint32_t width, uint
 	 * not allocated by minigbm. So we don't have to care about it. The tiled buffer is
 	 * converted to NV12 or YV12, which is allocated by minigbm. V4L2 MDP doesn't
 	 * require any special alignment for them.
-	 * On the other hand, the mediatek video encoder reuqires a padding on each plane.
+	 * On the other hand, the mediatek video encoder requires a padding on each plane.
 	 * When both video decoder and encoder use flag is masked (in some CTS test), we
 	 * align with the encoder alignment.
 	 * However, V4L2VideoDecodeAccelerator used on MT8173 fails handling the buffer with
@@ -369,11 +423,17 @@ static int mediatek_bo_create_with_modifiers(struct bo *bo, uint32_t width, uint
 	if (is_protected) {
 #if !defined(ANDROID) || (ANDROID_API_LEVEL >= 31 && defined(HAS_DMABUF_SYSTEM_HEAP))
 		int ret;
-		struct mediatek_private_drv_data *priv = (struct mediatek_private_drv_data *)bo->drv->priv;
+		struct mediatek_private_drv_data *priv =
+		    (struct mediatek_private_drv_data *)bo->drv->priv;
 		struct dma_heap_allocation_data heap_data = {
 			.len = bo->meta.total_size,
 			.fd_flags = O_RDWR | O_CLOEXEC,
 		};
+
+		if (priv->dma_heap_fd < 0) {
+			drv_loge("Protected buffer requested but CMA heap doesn't exist.\n");
+			return -1;
+		}
 
 		if (format == DRM_FORMAT_P010) {
 			/*
@@ -388,14 +448,6 @@ static int mediatek_bo_create_with_modifiers(struct bo *bo, uint32_t width, uint
 			bo->meta.offsets[1] = bo->meta.sizes[0];
 			bo->meta.total_size = bo->meta.total_size * 10 / 16;
 			heap_data.len = bo->meta.total_size;
-		}
-
-		if (priv->dma_heap_fd < 0) {
-			priv->dma_heap_fd = open("/dev/dma_heap/restricted_mtk_cma", O_RDWR | O_CLOEXEC);
-			if (priv->dma_heap_fd < 0) {
-				drv_loge("Failed opening secure CMA heap errno=%d\n", -errno);
-				return -errno;
-			}
 		}
 
 		ret = ioctl(priv->dma_heap_fd, DMA_HEAP_IOCTL_ALLOC, &heap_data);
@@ -590,35 +642,27 @@ static void mediatek_resolve_format_and_use_flags(struct driver *drv, uint32_t f
 		*out_use_flags &= ~BO_USE_HW_VIDEO_ENCODER;
 		break;
 	case DRM_FORMAT_FLEX_YCbCr_420_888:
-#ifdef USE_NV12_FOR_HW_VIDEO_DECODING
-		// TODO(hiroh): Switch to use NV12 for video decoder on MT8173 as well.
-		if (use_flags & (BO_USE_HW_VIDEO_DECODER)) {
-			*out_format = DRM_FORMAT_NV12;
-			break;
-		}
-#endif
+#ifndef MTK_MT8173
+		*out_format = DRM_FORMAT_NV12;
+		break;
+#else
 		/*
 		 * b/292507490: The MT8173 decoder can output YUV420 only. Some CTS tests feed the
 		 * decoded buffer to the hardware encoder and the tests allocate the buffer with
 		 * DRM_FORMAT_FLEX_YCbCr_420_888 with the mask of BO_USE_HW_VIDEO_ENCODER |
 		 * BO_USE_HW_VIDEO_DECODER. Therefore, we have to allocate YUV420 in the case.
 		 */
-		if (use_flags &
-		    (BO_USE_CAMERA_READ | BO_USE_CAMERA_WRITE | BO_USE_HW_VIDEO_ENCODER)) {
-#ifndef MTK_MT8173
+		if ((use_flags &
+		     (BO_USE_CAMERA_READ | BO_USE_CAMERA_WRITE | BO_USE_HW_VIDEO_ENCODER)) &&
+		    !(use_flags & BO_USE_HW_VIDEO_DECODER)) {
 			*out_format = DRM_FORMAT_NV12;
 			break;
-#else
-			if (!(use_flags & BO_USE_HW_VIDEO_DECODER)) {
-				*out_format = DRM_FORMAT_NV12;
-				break;
-			}
-#endif
 		}
 		/* HACK: See b/139714614 */
 		*out_format = DRM_FORMAT_YVU420;
 		*out_use_flags &= ~BO_USE_SCANOUT;
 		break;
+#endif
 	default:
 		break;
 	}
