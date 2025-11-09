@@ -83,7 +83,6 @@ cc_binary {
     name: "android.hardware.graphics.allocator@4.0-service.minigbm",
     defaults: ["minigbm_gralloc4_allocator_defaults"],
     shared_libs: ["libminigbm_gralloc"],
-    vintf_fragments: ["android.hardware.graphics.allocator@4.0.xml"],
     init_rc: ["android.hardware.graphics.allocator@4.0-service.minigbm.rc"],
 }
 
@@ -91,7 +90,6 @@ cc_binary {
     name: "android.hardware.graphics.allocator@4.0-service.minigbm_msm",
     defaults: ["minigbm_gralloc4_allocator_defaults"],
     shared_libs: ["libminigbm_gralloc_msm"],
-    vintf_fragments: ["android.hardware.graphics.allocator@4.0.xml"],
     init_rc: ["android.hardware.graphics.allocator@4.0-service.minigbm_msm.rc"],
 }
 
@@ -99,7 +97,6 @@ cc_binary {
     name: "android.hardware.graphics.allocator@4.0-service.minigbm_intel",
     defaults: ["minigbm_gralloc4_allocator_defaults"],
     shared_libs: ["libminigbm_gralloc_intel"],
-    vintf_fragments: ["android.hardware.graphics.allocator@4.0.xml"],
     init_rc: ["android.hardware.graphics.allocator@4.0-service.minigbm_intel.rc"],
     enabled: false,
     arch: {
@@ -116,7 +113,6 @@ cc_library_shared {
     name: "android.hardware.graphics.mapper@4.0-impl.minigbm",
     defaults: ["minigbm_gralloc4_common_defaults"],
     shared_libs: ["libminigbm_gralloc"],
-    vintf_fragments: ["android.hardware.graphics.mapper@4.0.xml"],
     srcs: [":minigbm_gralloc4_mapper_files"],
 }
 
@@ -124,7 +120,6 @@ cc_library_shared {
     name: "android.hardware.graphics.mapper@4.0-impl.minigbm_msm",
     defaults: ["minigbm_gralloc4_common_defaults"],
     shared_libs: ["libminigbm_gralloc_msm"],
-    vintf_fragments: ["android.hardware.graphics.mapper@4.0.xml"],
     srcs: [":minigbm_gralloc4_mapper_files"],
 }
 
@@ -132,7 +127,7 @@ cc_library_shared {
     name: "android.hardware.graphics.mapper@4.0-impl.minigbm_intel",
     defaults: ["minigbm_gralloc4_common_defaults"],
     shared_libs: ["libminigbm_gralloc_intel"],
-    vintf_fragments: ["android.hardware.graphics.mapper@4.0.xml"],
+    cflags: ["-DDRV_I915", "-DDRV_XE"],
     srcs: [":minigbm_gralloc4_mapper_files"],
     enabled: false,
     arch: {
