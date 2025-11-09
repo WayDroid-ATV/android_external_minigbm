@@ -14,7 +14,7 @@
 # limitations under the License.
 #
 
-service vendor.graphics.allocator-4-0 /vendor/bin/hw/android.hardware.graphics.allocator@4.0-service.minigbm_intel
+service vendor.graphics.allocator-4-0-intel /vendor/bin/hw/android.hardware.graphics.allocator@4.0-service.minigbm_intel
     interface android.hardware.graphics.allocator@4.0::IAllocator default
     class hal animation
     user system
@@ -22,3 +22,8 @@ service vendor.graphics.allocator-4-0 /vendor/bin/hw/android.hardware.graphics.a
     capabilities SYS_NICE
     onrestart restart surfaceflinger
     task_profiles ServiceCapacityLow
+    disabled
+
+on early-init && property:ro.hardware.gralloc=minigbm_intel
+    stop vendor.gralloc-2-0
+    enable vendor.graphics.allocator-4-0-intel
