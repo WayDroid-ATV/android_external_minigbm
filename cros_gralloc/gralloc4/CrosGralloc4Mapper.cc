@@ -14,11 +14,20 @@
 #include <aidl/android/hardware/graphics/common/Smpte2086.h>
 
 #include <cutils/native_handle.h>
+#include <cutils/properties.h>
 #include <gralloctypes/Gralloc4.h>
 
 #include "cros_gralloc/cros_gralloc_arm.h"
 #include "cros_gralloc/cros_gralloc_helpers.h"
 #include "cros_gralloc/gralloc4/CrosGralloc4Utils.h"
+
+#if defined(DRV_I915)
+#define GRALLOC_NAME "minigbm_intel"
+#elif defined(VIRTIO_GPU_NEXT)
+#define GRALLOC_NAME "minigbm_arcvm"
+#elif defined(DRV_EXTERNAL)
+#define GRALLOC_NAME "minigbm_gbm_mesa"
+#endif
 
 using aidl::android::hardware::graphics::common::BlendMode;
 using aidl::android::hardware::graphics::common::Cta861_3;
@@ -1167,5 +1176,13 @@ Return<void> CrosGralloc4Mapper::getReservedRegion(void* rawHandle, getReservedR
 }
 
 android::hardware::graphics::mapper::V4_0::IMapper* HIDL_FETCH_IMapper(const char* /*name*/) {
-    return static_cast<android::hardware::graphics::mapper::V4_0::IMapper*>(new CrosGralloc4Mapper);
+    char gralloc[PROPERTY_VALUE_MAX];
+
+    property_get("ro.hardware.gralloc", gralloc, "");
+
+    if (strcmp(gralloc, GRALLOC_NAME) == 0) {
+        return static_cast<android::hardware::graphics::mapper::V4_0::IMapper*>(new CrosGralloc4Mapper);
+    } else {
+        return NULL;
+    }
 }
