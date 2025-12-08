@@ -109,7 +109,7 @@ static struct driver *init_try_node(int idx, char const *str)
 	if (fd < 0)
 		return NULL;
 
-	drv = drv_create(fd);
+	drv = drv_create(fd, NULL);
 	if (!drv)
 		close(fd);
 
@@ -308,11 +308,9 @@ int32_t cros_gralloc_driver::allocate(const struct cros_gralloc_buffer_descripto
 	}
 
 	hnd->reserved_region_size = 0;
-	if (descriptor->enable_metadata_fd)
+	if (descriptor->enable_metadata_fd) {
 		hnd->reserved_region_size =
 		    sizeof(struct cros_gralloc_buffer_metadata) + descriptor->client_metadata_size;
-
-	if (hnd->reserved_region_size > 0) {
 		ret = create_reserved_region(descriptor->name, hnd->reserved_region_size);
 		if (ret < 0)
 			goto destroy_hnd;
@@ -342,10 +340,12 @@ int32_t cros_gralloc_driver::allocate(const struct cros_gralloc_buffer_descripto
 		goto destroy_hnd;
 	}
 
-	ret = buffer->initialize_metadata(descriptor);
-	if (ret) {
-		ALOGE("Failed to allocate: failed to initialize cros_gralloc_buffer metadata.");
-		goto destroy_hnd;
+	if (descriptor->enable_metadata_fd) {
+		ret = buffer->initialize_metadata(descriptor);
+		if (ret) {
+			ALOGE("Failed to allocate: failed to initialize cros_gralloc_buffer metadata.");
+			goto destroy_hnd;
+		}
 	}
 
 	{
@@ -366,7 +366,10 @@ destroy_hnd:
 	native_handle_close(hnd);
 	native_handle_delete(hnd);
 
-	drv_bo_destroy(bo);
+	// cros_gralloc_buffer takes the bo ownership when cros_gralloc_buffer::create succeeds
+	if (!buffer)
+		drv_bo_destroy(bo);
+
 	return ret;
 }
 

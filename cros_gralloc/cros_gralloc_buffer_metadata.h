@@ -10,14 +10,16 @@
 #include <optional>
 #include <type_traits>
 
+#ifndef HAS_NO_AIDL_METADATA
 #include <aidl/android/hardware/graphics/common/BlendMode.h>
 #include <aidl/android/hardware/graphics/common/Cta861_3.h>
 #include <aidl/android/hardware/graphics/common/Dataspace.h>
 #include <aidl/android/hardware/graphics/common/Smpte2086.h>
+#endif // HAS_NO_AIDL_METADATA
 
 #include "cros_gralloc_helpers.h"
 
-// Simple replacement for std::optional which is not guarenteed to be memory layout
+// Simple replacement for std::optional which is not guaranteed to be memory layout
 // stable across ABIs.
 template <typename T> struct cros_buffer_optional {
 
@@ -55,10 +57,17 @@ struct cros_gralloc_buffer_metadata {
 	 * handles.
 	 */
 	char name[CROS_GRALLOC_BUFFER_METADATA_MAX_NAME_SIZE];
+#ifndef HAS_NO_AIDL_METADATA
 	aidl::android::hardware::graphics::common::BlendMode blend_mode;
 	aidl::android::hardware::graphics::common::Dataspace dataspace;
 	cros_buffer_optional<aidl::android::hardware::graphics::common::Cta861_3> cta861_3;
 	cros_buffer_optional<aidl::android::hardware::graphics::common::Smpte2086> smpte2086;
+	int32_t smpte2094_50_size;
+
+	static constexpr auto MAX_SMPTE2094_50_SIZE = 1028 * 10;
+	// 10 KB ought to be enough
+	std::array<uint8_t, MAX_SMPTE2094_50_SIZE> smpte2094_50;
+#endif // HAS_NO_AIDL_METADATA
 };
 
 static_assert(std::is_standard_layout_v<cros_gralloc_buffer_metadata>);
