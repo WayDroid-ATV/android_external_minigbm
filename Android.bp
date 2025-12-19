@@ -69,23 +69,6 @@ filegroup {
     srcs: ["cros_gralloc/gralloc0/gralloc0.cc"],
 }
 
-generic_cflags = ["-DHAS_DMABUF_SYSTEM_HEAP"]
-intel_cflags = [
-    "-DDRV_I915",
-    "-DDRV_XE",
-]
-meson_cflags = ["-DDRV_MESON"]
-msm_cflags = [
-    "-DDRV_MSM",
-    "-DHAS_DMABUF_SYSTEM_HEAP",
-    "-DQCOM_DISABLE_COMPRESSED_NV12",
-]
-
-mediatek_cflags = [
-    "-DDRV_MEDIATEK",
-    "-DHAS_DMABUF_SYSTEM_HEAP",
-]
-
 cc_defaults {
     name: "minigbm_defaults",
 
@@ -98,16 +81,7 @@ cc_defaults {
         "-Wno-unused-parameter",
         "-Wpointer-arith",
         "-Wsign-compare",
-    ] + select(soong_config_variable("minigbm", "platform"), {
-        "generic": generic_cflags,
-        "intel": intel_cflags,
-        "meson": meson_cflags,
-        "msm": msm_cflags,
-        "mt8186": mediatek_cflags + ["-DMTK_MT8186"],
-        "mt8188": mediatek_cflags + ["-DMTK_MT8188G"],
-        "mt8196": mediatek_cflags + ["-DMTK_MT8196"],
-        default: [],
-    }),
+    ],
 
     product_variables: {
         platform_sdk_version: {
@@ -169,6 +143,19 @@ cc_defaults {
     srcs: [":minigbm_gralloc0_files"],
 }
 
+generic_cflags = ["-DHAS_DMABUF_SYSTEM_HEAP"]
+intel_cflags = [
+    "-DDRV_I915",
+    "-DDRV_XE",
+]
+meson_cflags = ["-DDRV_MESON"]
+msm_cflags = [
+    "-DDRV_MSM",
+    "-DQCOM_DISABLE_COMPRESSED_NV12",
+    "-DHAS_DMABUF_SYSTEM_HEAP",
+]
+arcvm_cflags = ["-DVIRTIO_GPU_NEXT"]
+
 cc_library {
     name: "libgbm",
     defaults: ["minigbm_defaults"],
@@ -181,6 +168,15 @@ cc_library {
         "gbm_helpers.c",
         "minigbm_helpers.c",
     ],
+
+    cflags: select(soong_config_variable("minigbm", "platform"), {
+        "generic": generic_cflags,
+        "intel": intel_cflags,
+        "meson": meson_cflags,
+        "msm": msm_cflags,
+        "arcvm": arcvm_cflags,
+        default: [],
+    }),
 
     target: {
         host: {
