@@ -42,6 +42,7 @@ filegroup {
         "drv_array_helpers.c",
         "drv_helpers.c",
         "dumb_driver.c",
+        "hbm.c",
         "i915.c",
         "mediatek.c",
         "msm.c",
@@ -110,7 +111,7 @@ cc_defaults {
         "minigbm_headers",
     ],
 
-    static_libs: ["libarect"],
+    static_libs: ["libarect", "libhbm_minigbm"],
 
     vendor: true,
 
@@ -217,10 +218,19 @@ cc_library_shared {
     name: "libminigbm_gralloc",
     defaults: ["minigbm_cros_gralloc_library_defaults"],
     include_dirs: [
+        "external/libdrm/amdgpu",
         "external/mesa/include",
         "external/mesa/src/gallium/drivers/svga/include",
     ],
-    cflags: ["-DHAS_DMABUF_SYSTEM_HEAP", "-DDRV_VMWGFX"],
+    cflags: [
+        "-DHAS_DMABUF_SYSTEM_HEAP",
+        "-DDRV_AMDGPU",
+        "-DDRV_DUMB",
+        "-DDRV_HBM_HELPER",
+        "-DDRV_I915",
+        "-DDRV_VMWGFX",
+        "-DDRV_XE",
+    ],
 }
 
 cc_library_shared {
