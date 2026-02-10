@@ -111,7 +111,15 @@ cc_defaults {
         "minigbm_headers",
     ],
 
-    static_libs: ["libarect", "libhbm_minigbm"],
+    static_libs: ["libarect"],
+    arch: {
+        x86: {
+            static_libs: ["libarect", "libhbm_minigbm"],
+        },
+        x86_64: {
+            static_libs: ["libarect", "libhbm_minigbm"],
+        },
+    },
 
     vendor: true,
 
@@ -222,15 +230,29 @@ cc_library_shared {
         "external/mesa/include",
         "external/mesa/src/gallium/drivers/svga/include",
     ],
-    cflags: [
-        "-DHAS_DMABUF_SYSTEM_HEAP",
-        "-DDRV_AMDGPU",
-        "-DDRV_DUMB",
-        "-DDRV_HBM_HELPER",
-        "-DDRV_I915",
-        "-DDRV_VMWGFX",
-        "-DDRV_XE",
-    ],
+    cflags: ["-DHAS_DMABUF_SYSTEM_HEAP"],
+    arch: {
+        x86: {
+            cflags: [
+                "-DHAS_DMABUF_SYSTEM_HEAP",
+                "-DDRV_AMDGPU",
+                "-DDRV_HBM_HELPER",
+                "-DDRV_I915",
+                "-DDRV_VMWGFX",
+                "-DDRV_XE",
+            ],
+        },
+        x86_64: {
+            cflags: [
+                "-DHAS_DMABUF_SYSTEM_HEAP",
+                "-DDRV_AMDGPU",
+                "-DDRV_HBM_HELPER",
+                "-DDRV_I915",
+                "-DDRV_VMWGFX",
+                "-DDRV_XE",
+            ],
+        },
+    },
 }
 
 cc_library_shared {
