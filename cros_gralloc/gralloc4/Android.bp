@@ -98,13 +98,15 @@ cc_binary {
     defaults: ["minigbm_gralloc4_allocator_defaults"],
     shared_libs: ["libminigbm_gralloc_nouveau"],
     init_rc: ["android.hardware.graphics.allocator@4.0-service.minigbm_nouveau.rc"],
-}
-
-cc_binary {
-    name: "android.hardware.graphics.allocator@4.0-service.minigbm_arcvm",
-    defaults: ["minigbm_gralloc4_allocator_defaults"],
-    shared_libs: ["libminigbm_gralloc_arcvm"],
-    init_rc: ["android.hardware.graphics.allocator@4.0-service.minigbm_arcvm.rc"],
+    enabled: false,
+    arch: {
+        x86: {
+            enabled: true,
+        },
+        x86_64: {
+            enabled: true,
+        },
+    },
 }
 
 cc_binary {
@@ -127,8 +129,6 @@ cc_library_shared {
     name: "android.hardware.graphics.mapper@4.0-impl.minigbm",
     defaults: ["minigbm_gralloc4_common_defaults"],
     shared_libs: ["libminigbm_gralloc"],
-    cflags: ["-DDRV_AMDGPU",
-             "-DDRV_I915"],
     srcs: [":minigbm_gralloc4_mapper_files"],
 }
 
@@ -146,14 +146,15 @@ cc_library_shared {
     shared_libs: ["libminigbm_gralloc_nouveau"],
     cflags: ["-DDRV_NOUVEAU"],
     srcs: [":minigbm_gralloc4_mapper_files"],
-}
-
-cc_library_shared {
-    name: "android.hardware.graphics.mapper@4.0-impl.minigbm_arcvm",
-    defaults: ["minigbm_gralloc4_common_defaults"],
-    shared_libs: ["libminigbm_gralloc_arcvm"],
-    cflags: ["-DVIRTIO_GPU_NEXT"],
-    srcs: [":minigbm_gralloc4_mapper_files"],
+    enabled: false,
+    arch: {
+        x86: {
+            enabled: true,
+        },
+        x86_64: {
+            enabled: true,
+        },
+    },
 }
 
 cc_library_shared {

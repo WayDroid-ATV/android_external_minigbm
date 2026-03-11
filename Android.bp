@@ -114,7 +114,15 @@ cc_defaults {
         "minigbm_headers",
     ],
 
-    static_libs: ["libarect", "libhbm_minigbm"],
+    static_libs: ["libarect"],
+    arch: {
+        x86: {
+            static_libs: ["libarect", "libhbm_minigbm"],
+        },
+        x86_64: {
+            static_libs: ["libarect", "libhbm_minigbm"],
+        },
+    },
 
     vendor: true,
 
@@ -226,12 +234,29 @@ cc_library_shared {
     include_dirs: ["external/libdrm/amdgpu",
                     "external/mesa/include",
                     "external/mesa/src/gallium/drivers/svga/include"],
-    cflags: ["-DHAS_DMABUF_SYSTEM_HEAP",
-                  "-DDRV_AMDGPU",
-                  "-DDRV_HBM_HELPER",
-                  "-DDRV_VMWGFX",
-                  "-DDRV_I915",
-                  "-DDRV_XE",],
+    cflags: ["-DDRV_DUMB", "-DHAS_DMABUF_SYSTEM_HEAP"],
+    arch: {
+        x86: {
+            cflags: [
+                "-DHAS_DMABUF_SYSTEM_HEAP",
+                "-DDRV_AMDGPU",
+                "-DDRV_HBM_HELPER",
+                "-DDRV_I915",
+                "-DDRV_VMWGFX",
+                "-DDRV_XE",
+            ],
+        },
+        x86_64: {
+            cflags: [
+                "-DHAS_DMABUF_SYSTEM_HEAP",
+                "-DDRV_AMDGPU",
+                "-DDRV_HBM_HELPER",
+                "-DDRV_I915",
+                "-DDRV_VMWGFX",
+                "-DDRV_XE",
+            ],
+        },
+    },
 }
 
 cc_library_shared {
@@ -316,23 +341,28 @@ cc_library_shared {
     name: "libminigbm_gralloc_nouveau",
     defaults: ["minigbm_cros_gralloc_library_defaults"],
     cflags: ["-DDRV_NOUVEAU"],
+    enabled: false,
+    arch: {
+        x86: {
+            enabled: true,
+        },
+        x86_64: {
+            enabled: true,
+        },
+    },
 }
 
 cc_library_shared {
     name: "gralloc.minigbm_nouveau",
     defaults: ["minigbm_cros_gralloc0_defaults"],
     shared_libs: ["libminigbm_gralloc_nouveau"],
-}
-
-// ARCVM
-cc_library_shared {
-    name: "libminigbm_gralloc_arcvm",
-    defaults: ["minigbm_cros_gralloc_library_defaults"],
-    cflags: ["-DVIRTIO_GPU_NEXT"],
-}
-
-cc_library_shared {
-    name: "gralloc.minigbm_arcvm",
-    defaults: ["minigbm_cros_gralloc0_defaults"],
-    shared_libs: ["libminigbm_gralloc_arcvm"],
+    enabled: false,
+    arch: {
+        x86: {
+            enabled: true,
+        },
+        x86_64: {
+            enabled: true,
+        },
+    },
 }
