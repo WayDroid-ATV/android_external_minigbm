@@ -28,7 +28,6 @@ cc_binary {
     defaults: ["minigbm_cros_gralloc_defaults"],
     relative_install_path: "hw",
     init_rc: ["allocator.rc"],
-    vintf_fragments: ["allocator.xml"],
     vendor: true,
     shared_libs: [
         "android.hardware.graphics.allocator-V2-ndk",

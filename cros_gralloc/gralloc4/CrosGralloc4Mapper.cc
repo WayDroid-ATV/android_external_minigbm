@@ -21,6 +21,16 @@
 #include "cros_gralloc/cros_gralloc_helpers.h"
 #include "cros_gralloc/gralloc4/CrosGralloc4Utils.h"
 
+#if defined(DRV_EXTERNAL) && defined(HAS_DMABUF_SYSTEM_HEAP)
+#define GRALLOC_NAME "minigbm_dmabuf"
+#elif defined(DRV_EXTERNAL)
+#define GRALLOC_NAME "minigbm_gbm_mesa"
+#elif defined(DRV_NOUVEAU)
+#define GRALLOC_NAME "minigbm_nouveau"
+#else
+#define GRALLOC_NAME "minigbm"
+#endif
+
 using aidl::android::hardware::graphics::common::BlendMode;
 using aidl::android::hardware::graphics::common::Cta861_3;
 using aidl::android::hardware::graphics::common::Dataspace;
@@ -1167,30 +1177,14 @@ Return<void> CrosGralloc4Mapper::getReservedRegion(void* rawHandle, getReservedR
     return Void();
 }
 
-char default_mapper[PROPERTY_VALUE_MAX];
-char default_gralloc[PROPERTY_VALUE_MAX];
 android::hardware::graphics::mapper::V4_0::IMapper* HIDL_FETCH_IMapper(const char* /*name*/) {
-    property_get("debug.ui.default_mapper", default_mapper, "");
-    property_get("ro.hardware.gralloc", default_gralloc, "");
-    if (atoi(default_mapper) == 4) {
-#if defined(DRV_AMDGPU) || defined(DRV_I915)
-        if (strcmp(default_gralloc, "minigbm") == 0) {
-    return static_cast<android::hardware::graphics::mapper::V4_0::IMapper*>(new CrosGralloc4Mapper);
-    } else {return NULL;}
-#elif defined(VIRTIO_GPU_NEXT)
-        if (strcmp(default_gralloc, "minigbm_arcvm") == 0) {
-    return static_cast<android::hardware::graphics::mapper::V4_0::IMapper*>(new CrosGralloc4Mapper);
-    } else {return NULL;}
-#elif defined(DRV_NOUVEAU)
-        if (strcmp(default_gralloc, "minigbm_nouveau") == 0) {
-    return static_cast<android::hardware::graphics::mapper::V4_0::IMapper*>(new CrosGralloc4Mapper);
-    } else {return NULL;}
-#elif defined(DRV_EXTERNAL)
-        if (strcmp(default_gralloc, "minigbm_gbm_mesa") == 0) {
-    return static_cast<android::hardware::graphics::mapper::V4_0::IMapper*>(new CrosGralloc4Mapper);
-    } else {return NULL;}
-#else
-    return NULL;
-#endif
-    } else {return NULL;}
+    char gralloc[PROPERTY_VALUE_MAX];
+
+    property_get("ro.hardware.gralloc", gralloc, "");
+
+    if (strcmp(gralloc, GRALLOC_NAME) == 0) {
+        return static_cast<android::hardware::graphics::mapper::V4_0::IMapper*>(new CrosGralloc4Mapper);
+    } else {
+        return NULL;
+    }
 }
