@@ -125,7 +125,7 @@ cc_defaults {
         "libnativewindow",
         "libsync",
         "liblog",
-        "android.hardware.graphics.common-V5-ndk",
+        "android.hardware.graphics.common-V6-ndk",
     ],
     arch: {
         x86: {
@@ -275,6 +275,7 @@ cc_library_headers {
     vendor_available: true,
     export_include_dirs: ["cros_gralloc"],
     visibility: [
+        "//device/generic/goldfish/hals/hwc3:__subpackages__",
         "//device/generic/goldfish-opengl/system/hwc3:__subpackages__",
     ],
 }
