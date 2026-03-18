@@ -25,8 +25,6 @@
 #define GRALLOC_NAME "minigbm_dmabuf"
 #elif defined(DRV_EXTERNAL)
 #define GRALLOC_NAME "minigbm_gbm_mesa"
-#elif defined(DRV_NOUVEAU)
-#define GRALLOC_NAME "minigbm_nouveau"
 #else
 #define GRALLOC_NAME "minigbm"
 #endif
