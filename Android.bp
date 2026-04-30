@@ -115,14 +115,6 @@ cc_defaults {
     ],
 
     static_libs: ["libarect"],
-    arch: {
-        x86: {
-            static_libs: ["libarect", "libhbm_minigbm"],
-        },
-        x86_64: {
-            static_libs: ["libarect", "libhbm_minigbm"],
-        },
-    },
 
     vendor: true,
 
@@ -135,6 +127,14 @@ cc_defaults {
         "liblog",
         "android.hardware.graphics.common-V5-ndk",
     ],
+    arch: {
+        x86: {
+            shared_libs: ["libhbm_minigbm"],
+        },
+        x86_64: {
+            shared_libs: ["libhbm_minigbm"],
+        },
+    },
 }
 
 cc_defaults {
