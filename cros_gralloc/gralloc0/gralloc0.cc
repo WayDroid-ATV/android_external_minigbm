@@ -355,7 +355,7 @@ static int gralloc0_perform(struct gralloc_module_t const *module, int op, ...)
 		req_usage = va_arg(args, uint32_t);
 		out_gralloc_usage = va_arg(args, uint32_t *);
 		if (req_usage & GRALLOC_DRM_GET_USAGE_FRONT_RENDERING_BIT)
-			gralloc_usage |= BUFFER_USAGE_FRONT_RENDERING;
+			gralloc_usage |= BUFFER_USAGE_FRONT_RENDERING_PRIVATE;
 		*out_gralloc_usage = gralloc_usage;
 		break;
 	case GRALLOC_DRM_GET_BUFFER_COLOR_INFO:

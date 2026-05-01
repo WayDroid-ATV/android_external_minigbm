@@ -4,14 +4,12 @@ hiroh@chromium.org
 niwa@chromium.org
 olv@google.com
 ryanneph@google.com
-tfiga@chromium.org
 zzyiwei@google.com
 
 # just reference for backend specific reviews
 per-file amdgpu.c = ddavenport@chromium.org, olv@google.com
 per-file i915.c = justonli@google.com, ryanneph@google.com
 per-file mediatek.c = fshao@chromium.org, zzyiwei@google.com
-per-file rockchip.c = tfiga@chromium.org
 per-file virtgpu* = natsu@google.com, zzyiwei@google.com
 
 # Robots.

@@ -515,6 +515,14 @@ static int mediatek_bo_create_with_modifiers(struct bo *bo, uint32_t width, uint
 			.fd_flags = O_RDWR | O_CLOEXEC,
 		};
 
+		/*
+		 * Android Desktop hardware video decoders stack currently could not allocate the
+		 * MT2T and P010 buffers accordingly. As a short term workaround, a secure P010
+		 * buffer is allocated always and handle the P010 buffer as MT2T in the video stack.
+		 * TODO(b/495560746): Remove this workaround and allocate P010 and MT2T per buffer
+		 * usage.
+		 */
+#if !defined(ANDROID)
 		if (format == DRM_FORMAT_P010) {
 			/*
 			 * Adjust the size so we don't waste tons of space. This was allocated
@@ -529,10 +537,10 @@ static int mediatek_bo_create_with_modifiers(struct bo *bo, uint32_t width, uint
 			bo->meta.total_size = bo->meta.total_size * 10 / 16;
 			heap_data.len = bo->meta.total_size;
 		}
+#endif // !defined(Android)
 
 		if (priv->dma_heap_fd < 0) {
-			priv->dma_heap_fd =
-			    open(PROTECTED_DMA_HEAP_PATH, O_RDONLY | O_CLOEXEC);
+			priv->dma_heap_fd = open(PROTECTED_DMA_HEAP_PATH, O_RDONLY | O_CLOEXEC);
 			if (priv->dma_heap_fd < 0) {
 				drv_loge("Failed opening secure CMA heap with error %s.\n",
 					 strerror(errno));
