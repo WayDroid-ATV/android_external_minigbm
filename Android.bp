@@ -231,9 +231,11 @@ rust_bindgen {
 cc_library_shared {
     name: "libminigbm_gralloc",
     defaults: ["minigbm_cros_gralloc_library_defaults"],
-    include_dirs: ["external/libdrm/amdgpu",
-                    "external/mesa/include",
-                    "external/mesa/src/gallium/drivers/svga/include"],
+    include_dirs: [
+        "external/libdrm/amdgpu",
+        "external/mesa3d/include",
+        "external/mesa3d/src/gallium/drivers/svga/include",
+    ],
     cflags: ["-DDRV_DUMB", "-DHAS_DMABUF_SYSTEM_HEAP"],
     arch: {
         x86: {
