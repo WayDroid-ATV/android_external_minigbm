@@ -64,6 +64,14 @@ static void xe_info_from_device_id(struct xe_device *xe)
 		}
 	}
 
+	for (i = 0; i < ARRAY_SIZE(dg2_ids); i++) {
+		if (dg2_ids[i] == xe->device_id) {
+			xe->is_xelpd = true;
+			xe->graphics_version = 12;
+			return;
+		}
+	}
+
 	for (i = 0; i < ARRAY_SIZE(rplp_ids); i++) {
 		if (rplp_ids[i] == xe->device_id) {
 			xe->is_xelpd = true;
