@@ -125,7 +125,7 @@ cc_defaults {
         "libnativewindow",
         "libsync",
         "liblog",
-        "android.hardware.graphics.common-V6-ndk",
+        "android.hardware.graphics.common-V7-ndk",
     ],
     arch: {
         x86: {
