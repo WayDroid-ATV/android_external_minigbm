@@ -198,6 +198,8 @@ cc_library {
     product_available: true,
 
     export_include_dirs: ["."],
+
+    min_sdk_version: "35",
 }
 
 // Rust bindings to minigbm, generated in a way compatible with gbm crate.
@@ -225,6 +227,7 @@ rust_bindgen {
         "//external/rust/android-crates-io/crates/gbm",
         "//system/cros-codecs",
     ],
+    min_sdk_version: "35",
 }
 
 // Generic
